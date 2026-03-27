@@ -1,25 +1,43 @@
 import express from 'express';
 import cors from 'cors';
-import { connectDB } from './config/db.js';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 import http from 'http';
 import { Server } from 'socket.io';
-import dotenv from 'dotenv';
+
+import authRoutes from './routes/authRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import providerRoutes from './routes/providerRoutes.js';
 
 dotenv.config();
-connectDB();
-
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// MongoDB connection
+mongoose.connect(process.env.DB_URI)
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.log(err));
+
+// Test route
+app.get('/', (req, res) => res.send('LocalHero Backend Running'));
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/providers', providerRoutes);
+
+// Socket.io setup
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// Socket.io basic setup
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
 });
 
-app.get('/', (req, res) => res.send('LocalHero API running'));
-
-server.listen(process.env.PORT || 5000, () => console.log('Server running...'));
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`Server running on ${PORT}`));
